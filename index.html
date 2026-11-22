@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rule 22</title>
+<style>
+  :root { color-scheme: dark; --ink: #e8e6e1; --bg: #14130f; --accent: #d9a441; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink);
+         font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+         display: flex; flex-direction: column; align-items: center; padding: 24px 16px; gap: 16px; }
+  h1 { font-size: 15px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; margin: 0; color: var(--accent); }
+  canvas { image-rendering: pixelated; width: 100%; max-width: 720px; border: 1px solid #2e2b24; background: #0b0a08; }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; max-width: 720px; width: 100%; }
+  label { display: flex; align-items: center; gap: 8px; }
+  input[type=range] { accent-color: var(--accent); }
+  output { min-width: 3ch; color: var(--accent); }
+  button { background: none; border: 1px solid #3b372e; color: var(--ink); padding: 6px 14px; cursor: pointer; font: inherit; }
+  button:hover { border-color: var(--accent); }
+</style>
+</head>
+<body>
+  <h1>Elementary Cellular Automaton</h1>
+  <div class="controls">
+    <label>rule <input id="rule" type="range" min="0" max="255" value="22"><output id="ruleOut">22</output></label>
+    <label>width <input id="width" type="range" min="31" max="301" step="10" value="61"><output id="widthOut">61</output></label>
+    <button id="random">random rule</button>
+  </div>
+  <canvas id="c"></canvas>
+<script>
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const ruleEl = document.getElementById('rule');
+  const widthEl = document.getElementById('width');
+  const ruleOut = document.getElementById('ruleOut');
+  const widthOut = document.getElementById('widthOut');
+
+  // 규칙 번호를 8개 이웃 패턴에 대한 비트 테이블로 편다.
+  const ruleTable = (rule) => Array.from({ length: 8 }, (_, i) => (rule >> i) & 1);
+
+  // 이웃 세 칸을 0..7 인덱스로 접는다. 경계는 원형으로 감는다.
+  function step(row, table) {
+    const n = row.length;
+    const next = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      next[i] = table[(row[(i - 1 + n) % n] << 2) | (row[i] << 1) | row[(i + 1) % n]];
+    }
+    return next;
+  }
+
+  function draw() {
+    const rule = Number(ruleEl.value);
+    const w = Number(widthEl.value);
+    const h = Math.round(w * 0.62);
+    ruleOut.textContent = rule;
+    widthOut.textContent = w;
+
+    canvas.width = w;
+    canvas.height = h;
+    const img = ctx.createImageData(w, h);
+    const table = ruleTable(rule);
+    let row = new Uint8Array(w);
+    row[w >> 1] = 1;
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const p = (y * w + x) * 4;
+        const on = row[x];
+        img.data[p] = on ? 217 : 11;
+        img.data[p + 1] = on ? 164 : 10;
+        img.data[p + 2] = on ? 65 : 8;
+        img.data[p + 3] = 255;
+      }
+      row = step(row, table);
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  ruleEl.addEventListener('input', draw);
+  widthEl.addEventListener('input', draw);
+  document.getElementById('random').addEventListener('click', () => {
+    ruleEl.value = String(Math.floor(Math.random() * 256));
+    draw();
+  });
+  draw();
+</script>
+</body>
+</html>
